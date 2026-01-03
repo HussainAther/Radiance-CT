@@ -2,6 +2,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# Add to core/janus_projector.py
+CLINICAL_CONSTANTS = {
+    "target": "Molybdenum",
+    "primary_peaks_kev": [17.5, 19.6], # 
+    "focal_spot_routine_mm": 0.3,      # [cite: 789]
+    "focal_spot_mag_mm": 0.1,          # [cite: 789]
+    "spatial_resolution_target_um": 100 # Target for microcalcifications 
+}
+
 class JanusProjector(nn.Module):
     """
     Differentiable Forward Projector for RBYRCT with Janus Selective Occlusion.
