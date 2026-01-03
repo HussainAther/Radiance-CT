@@ -1,0 +1,19 @@
+# --- Core Deep Learning & Physics ---
+torch>=2.0.0          # For Neural Attenuation Fields (NAF)
+torchvision>=0.15.0
+numpy>=1.24.0
+
+# --- Medical Imaging & Optimization ---
+scipy>=1.10.0         # For MART-based entropy calculations
+scikit-image>=0.20.0  # For SSIM/PSNR Sensitivity Audits
+opencv-python-headless # For projection geometry processing
+
+# --- Dashboard & Visualization ---
+streamlit>=1.22.0     # The "Dose Currency" Dashboard
+plotly>=5.14.0        # Interactive 3D volume plots
+matplotlib>=3.7.0     # Static clinical validation plots
+
+# --- Data & File Handling ---
+pandas>=2.0.0         # For clinical log management
+h5py>=3.8.0           # Handling raw CT sinogram data
+pydicom>=2.4.0        # DICOM support for Huda-validated phantoms
