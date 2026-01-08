@@ -1,64 +1,37 @@
 import numpy as np
-from .geometry import get_siddon_path_lengths
-from .spectrum import get_weighted_attenuation
 
 class RBYRCTProjector:
-    def __init__(self, volume_dims, voxel_size, source_io=10**6):
-        """
-        source_io: Initial photon count (I0) from the Molybdenum source.
-        """
+    def __init__(self, volume_dims=(128, 128), voxel_size=1.0):
         self.dims = volume_dims
         self.voxel_size = voxel_size
-        self.I0 = source_io
 
-    def forward_project_ray(self, source, detector_pixel, volume):
+    def forward_project_ray(self, source, pixel, volume):
         """
-        Performs the Beer-Lambert calculation for a single ray (Ray-By-Ray).
-        I = I0 * exp(-sum(mu_i * ds_i))
+        Calculates the line integral of attenuation coefficients along a ray.
+        Implements Beer-Lambert: I = I0 * exp(-sum(mu_i * l_i))
         """
-        # 1. Get exact path lengths through each voxel using Siddon's Algorithm
-        path_segments = get_siddon_path_lengths(
-            source, detector_pixel, self.voxel_size, self.dims
-        )
+        # Vector from source to detector pixel
+        ray_vector = pixel - source
+        distance = np.linalg.norm(ray_vector)
+        unit_vector = ray_vector / distance
         
-        # 2. Accumulate the total optical depth (sum of attenuation * distance)
-        total_exponent = 0.0
-        for voxel_idx, ds in path_segments:
-            # Retrieve attenuation (mu) for this specific voxel
-            # This is where your BI-RADS density patterns are stored
-            mu_v = volume[voxel_idx] 
-            
-            # Apply the weighted attenuation (accounting for 17.5/19.6 keV peaks)
-            weighted_mu = get_weighted_attenuation(mu_v)
-            
-            total_exponent += weighted_mu * ds
-            
-        # 3. Apply Beer-Lambert Law
-        intensity = self.I0 * np.exp(-total_exponent)
+        # Sampling along the ray (step size = half a voxel for accuracy)
+        step_size = self.voxel_size / 2.0
+        num_steps = int(distance / step_size)
         
-        return intensity
-
-    def generate_projections(self, volume, geometry_params, collimator):
-        """
-        The main loop that generates the 'Janus' detector data.
-        Integrates with the active collimator to 'starve' unnecessary rays.
-        """
-        projections = {}
-        for angle in geometry_params.angles:
-            detector_frame = np.zeros(geometry_params.detector_shape)
+        total_attenuation = 0.0
+        
+        for i in range(num_steps):
+            # Current position in 3D space
+            current_pos = source + (i * step_size * unit_vector)
             
-            for pixel_idx in np.ndindex(geometry_params.detector_shape):
-                # Check with the Collimator: Should we fire this ray?
-                if collimator.should_fire_ray(angle, pixel_idx):
-                    detector_frame[pixel_idx] = self.forward_project_ray(
-                        geometry_params.source_pos[angle],
-                        geometry_params.pixel_pos[pixel_idx],
-                        volume
-                    )
-                else:
-                    # Dose Reduction: Ray is starved, intensity is 0
-                    detector_frame[pixel_idx] = 0.0
-                    
-            projections[angle] = detector_frame
+            # Convert spatial coordinates to voxel indices
+            idx = (current_pos / self.voxel_size).astype(int)
             
-        return projections
+            # Check if we are still inside the phantom volume
+            if np.all(idx >= 0) and np.all(idx < self.dims):
+                # Beer-Lambert: mu is the attenuation coefficient at this voxel
+                mu = volume[idx[0], idx[1]]
+                total_attenuation += mu * step_size
+                
+        return total_attenuation
