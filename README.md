@@ -1,12 +1,65 @@
-Radiance-CT: Differentiable Ray-by-Ray Tomography
-Radiance-CT is a next-generation tomographic reconstruction engine designed for Artifact Starvation and Ultra-Low Dose imaging. By replacing traditional fixed-geometry fan beams with steerable Active Collimation, Radiance-CT achieves a 64% reduction in radiation dose while maintaining diagnostic SNR thresholds.
+# Radiance-CT: Ray-By-Ray Computed Tomography (RBYRCT)
 
-🚀 Key Innovations
-Active Collimation (Janus Steering): Physically directs X-ray photons toward high-entropy regions, "starving" artifacts at the source level.
+**Radiance-CT** is the computational engine for **Janus Sphere Innovations**. It implements a novel **Ray-By-Ray (RBYRCT)** reconstruction framework designed to achieve a **64% reduction in Mean Glandular Dose (MGD)** for breast imaging while maintaining high-fidelity detection of 100 µm microcalcifications.
 
-Neural Attenuation Fields: Implements a differentiable X-ray renderer (NeRF-based) to reconstruct 3D volumes from sparse, non-uniform ray paths.
+## 🚀 Key Innovation: The Janus Feedback Loop
 
-Adaptive Localized MART: A proprietary Multiplicative Algebraic Reconstruction Technique optimized for real-time ray-by-ray updates.
+Unlike traditional CT which uses uniform radiation, our system utilizes a **Dynamic Light Field** approach. By coupling a Multiplicative Algebraic Reconstruction Technique (**MART**) with an **Active Collimator**, we "starve" rays that pass through non-diagnostic tissue and "prioritize" rays targeting dense glandular masses (**BI-RADS Pattern 4**).
+
+## 🛠 Repository Structure
+
+* **`src/rbyrct/projector.py`**: The Physics Engine. Implements the Beer-Lambert Law using **Siddon’s Algorithm** for exact path-length calculation.
+* **`src/rbyrct/collimator.py`**: The "Robotics" Logic. Calculates information gain to drive the Janus physical shutters.
+* **`src/rbyrct/optimizer.py`**: The Intelligence Layer. Tunes MART weights using **TOPAS Monte Carlo** phase-space data to "teach" the solver real-world scatter physics.
+* **`src/rbyrct/dose_tracker.py`**: Compliance & Audit. Real-time logging of cumulative energy to ensure **ALARA** (As Low As Reasonably Achievable) standards.
+* **`src/utils/topas_loader.py`**: The Bridge. Parsers for TOPAS ASCII and Binary outputs (Release 4.0.0).
+
+## 🧬 Clinical Grounding
+
+Our simulations are benchmarked against **Grainger & Allison’s Diagnostic Radiology (7th Ed.)**.
+
+* **Spectral Modeling**: Optimized for Molybdenum (Mo) target peaks at **17.5 keV** and **19.6 keV**.
+* **Density Mapping**: Hard-coded attenuation coefficients for Adipose vs. Glandular tissue to solve the "superimposition" problem in dense breasts.
+
+## 📥 Getting Started
+
+### Prerequisites
+
+* **TOPAS (Tool for Particle Simulation)**: Required for generating ground-truth Monte Carlo data.
+* **Python 3.9+** with `numpy`, `pandas`, and `scipy`.
+
+### Installation
+
+```bash
+git clone https://github.com/hussainather/Radiance-CT.git
+cd Radiance-CT
+pip install -r requirements.txt
+
+```
+
+### Running a Reconstruction
+
+```python
+from src.rbyrct.solver import reconstruct_rbyrct
+
+# Load your TOPAS simulation data
+volume = reconstruct_rbyrct(measured_data, geometry_params)
+
+```
+
+## 📈 Roadmap for Luminate 2026
+
+1. **Digital Twin Validation**: Match RBYRCT output to TOPAS Phase Space within < 1% error.
+2. **Benchtop Prototype**: Interface `collimator.py` with Rochester-manufactured physical shutters.
+3. **Clinical Pilot**: Early-stage validation with New York-based oncology research hospitals.
+
+---
+
+**Chief Scientist:** Dr. Richard Gordon
+
+**Technical Lead:** S. Hussain Ather
+
+---
 
 📊 Performance Metrics
 Metric	Standard CT (Fixed)	Radiance-CT (Steerable)
