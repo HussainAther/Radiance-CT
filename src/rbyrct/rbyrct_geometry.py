@@ -1,27 +1,40 @@
 import numpy as np
 
-def rbyrct_mart_update(recon_volume, p_i, ray_path_weights, lmbda=0.1):
+def get_wu_weights(x0, y0, x1, y1, grid_shape):
     """
-    Implements the Multiplicative Algebraic Reconstruction Technique (MART).
-    
-    Args:
-        recon_volume: 1D or 2D array of electronic densities (f_j).
-        p_i: Measured projection data for the current ray.
-        ray_path_weights: List of (index, a_ij) tuples where a_ij is the Wu weight.
-        lmbda: Relaxation parameter (0.1 - 2.0).
+    Implements Wu's anti-aliasing to calculate voxel weights a_ij.
+    Ensures smooth ray-sum integration across voxel boundaries.
     """
-    # 1. Calculate the current projection estimate: sum(a_il * f_l)
-    current_projection = 0.0
-    for idx, a_ij in ray_path_weights:
-        current_projection += a_ij * recon_volume[idx]
+    weights = []
+    # Normalized coordinates
+    dx, dy = x1 - x0, y1 - y0
+    steep = abs(dy) > abs(dx)
     
-    # 2. Compute the update ratio (p_i / estimate)
-    if current_projection > 0:
-        ratio = p_i / current_projection
+    if steep:
+        x0, y0, x1, y1 = y0, x0, y1, x1
+        dx, dy = dy, dx
+    if x0 > x1:
+        x0, x1, y0, y1 = x1, x0, y1, y0
         
-        # 3. Apply the localized multiplicative power update
-        # f_j^(k+1) = f_j^k * (ratio)^(lambda * a_ij)
-        for idx, a_ij in ray_path_weights:
-            recon_volume[idx] *= (ratio ** (lmbda * a_ij))
+    gradient = dy / dx if dx != 0 else 1.0
+    
+    # Iterate through x-coordinates to find pixel coverage
+    x_end = round(x0)
+    y_end = y0 + gradient * (x_end - x0)
+    xpxl1 = x_end
+    ypxl1 = int(y_end)
+    
+    for x in range(xpxl1, int(x1) + 1):
+        inter_y = y0 + gradient * (x - x0)
+        y_idx = int(inter_y)
+        # Wu weights: fractional part determines the split between two adjacent voxels
+        f_part = inter_y - y_idx
+        
+        if steep:
+            weights.append(((y_idx, x), 1 - f_part))
+            weights.append(((y_idx + 1, x), f_part))
+        else:
+            weights.append(((x, y_idx), 1 - f_part))
+            weights.append(((x, y_idx + 1), f_part))
             
-    return recon_volume
+    return [w for w in weights if 0 <= w[0][0] < grid_shape[0] and 0 <= w[0][1] < grid_shape[1]]
